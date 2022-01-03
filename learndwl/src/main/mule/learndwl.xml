@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="7b517651-64dc-4d34-aeca-78a7877afb90" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="8bd837be-174a-441e-8c97-b4130a2de254" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="root" database="mule" />
+	</db:config>
+	<wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="cae0d0f8-9e33-4f71-ad5c-259bc85de4d4" >
+		<wsc:connection wsdlLocation="https://www.learnwebservices.com/services/hello?WSDL" service="HelloEndpointService" port="HelloEndpointPort" address="https://www.learnwebservices.com/services/hello" >
+			<wsc:web-service-security actor="http://schemas.xmlsoap.org/soap/actor/next" />
+		</wsc:connection>
+	</wsc:config>
+	<flow name="learnDataBaseConnector" doc:id="c3c78e0b-af77-45d4-a901-9236d0e0c380" >
+		<http:listener doc:name="Listener" doc:id="ae29280e-dadb-47bb-8c7a-cd4ec89d9291" config-ref="HTTP_Listener_config" path="/db">
+		</http:listener>
+		<db:select doc:name="Select" doc:id="1582f90f-678f-4b0e-ad8f-91bdf67e5671" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT * FROM mule.emp_details where emp_id=:id;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	id: attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="c2ebbf8b-49f4-4122-9fb6-97c6b19b9ddd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="807c1252-0cda-4292-8dc7-43cf10a876e3" message="#[payload]"/>
+	</flow>
+	<flow name="learndwlFlow1" doc:id="61a4bf53-3f57-4158-9628-fe240f0ae4f2" >
+		<http:listener doc:name="Listener" doc:id="34bacda9-edb5-4ce8-842f-b95fa681df12" config-ref="HTTP_Listener_config" path="/soap"/>
+		<ee:transform doc:name="Transform Message" doc:id="0cba0987-7803-44c9-9b42-b561c1792dad" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://learnwebservices.com/services/hello
+---
+{
+	ns0#SayHello: {
+		ns0#HelloRequest: {
+			ns0#Name: payload
+		}
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<wsc:consume doc:name="Consume" doc:id="d94accb0-304c-4ac2-ae77-1b1dc3f98728" config-ref="Web_Service_Consumer_Config" operation="SayHello"/>
+		<ee:transform doc:name="Transform Message" doc:id="183d2437-a967-46d4-9c77-5582e97586e0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.body]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="learndwlFlow" doc:id="3a03a67b-9433-40a1-9ed8-e0812a38cacb" >
+		<http:listener doc:name="Listener" doc:id="bac0e6f6-c10f-4049-8567-d0246ee05de6" config-ref="HTTP_Listener_config" path="/insert"/>
+		<db:insert doc:name="Insert" doc:id="9b11a65d-1279-4b40-b22c-436bab4bbe9f" config-ref="Database_Config">
+			<db:sql ><![CDATA[insert into mule.bank_details (customer_name,account_no,Balance)
+values(:customer_name,:account_no,:balance);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	customer_name : payload.customer_name,
+	account_no : payload.account_no,
+	balance: payload.balance
+	
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="5e605621-9ea9-45c9-a904-a1d28b9d19d8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

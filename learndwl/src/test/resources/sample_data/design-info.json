@@ -1,0 +1,10 @@
+{
+  "sampleData": {
+    "6ddd3160-6889-4b3e-bd03-4167255558cb": {
+      "payload": "sample_data/name.xml"
+    },
+    "0cba0987-7803-44c9-9b42-b561c1792dad": {
+      "payload": "sample_data/defaultstringtype.dwl"
+    }
+  }
+}
